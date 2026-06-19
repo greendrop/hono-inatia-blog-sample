@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@hono/inertia':
+        specifier: ^0.6.0
+        version: 0.6.0(hono@4.12.26)(vite@6.4.3)
+      '@ts-76/inertia-hono-jsx':
+        specifier: ^0.2.3
+        version: 0.2.3(@hono/inertia@0.6.0(hono@4.12.26)(vite@6.4.3))(hono@4.12.26)
       hono:
         specifier: ^4.12.26
         version: 4.12.26
@@ -433,6 +439,16 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@hono/inertia@0.6.0':
+    resolution: {integrity: sha512-9Xf+kIhFYFA/HfIGDRuMvfl6eI6e/3WVl+/BMYXNfUa1VKqcKYV1wb1ZhCrOaIql4tPYDCZcH1uPDUyDil3AxA==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      hono: '>=4.0.0'
+      vite: '>=5.0.0'
+    peerDependenciesMeta:
+      vite:
+        optional: true
+
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
     engines: {node: '>=18'}
@@ -585,6 +601,14 @@ packages:
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [x64]
     os: [win32]
+
+  '@inertiajs/core@3.4.0':
+    resolution: {integrity: sha512-3O+My9yhY1NliwyaEFS2OhLpnNb73mWIgAJEeh6KnBL5lJKy5P5TlvmjR4ROWJhMjVmvtbkiJ/sQ2n4qazsH8g==}
+    peerDependencies:
+      axios: ^1.15.2
+    peerDependenciesMeta:
+      axios:
+        optional: true
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -756,6 +780,12 @@ packages:
   '@speed-highlight/core@1.2.17':
     resolution: {integrity: sha512-Z92FwKpCtfaW1V0jTU/fh3QzYEZN8wDwrzRIBoADCJfn4mJCNcJN/XegifX7BDrQ8/h9Xh/JnbyMchL0FqXrkg==}
 
+  '@ts-76/inertia-hono-jsx@0.2.3':
+    resolution: {integrity: sha512-RFj0wAZ9m1M5Y66gAQTOp7vynqE3yfmlVW7ZPpinZOydb9QP5QjyY6YfioHfNGxtDw7kb7IqdYJu9vu0pBGEqA==}
+    peerDependencies:
+      '@hono/inertia': ^0.2.0
+      hono: ^4.12.20
+
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
 
@@ -781,6 +811,9 @@ packages:
 
   error-stack-parser-es@1.0.5:
     resolution: {integrity: sha512-5qucVt2XcuGMcEGgWI7i+yZpmpByQ8J1lHhcL7PwqCwu9FPP3VUXzT4ltHe5i2z9dePwEHcDVOAfSnHsOlCXRA==}
+
+  es-toolkit@1.47.1:
+    resolution: {integrity: sha512-5RAqEwf4P4E17p+W75KLOWw/nOvKZzSQpxM32IpI2KZLaVonjTrZ0Ai5ghMaVI9eKC2p8eoQgcBdkEDgzFk6+Q==}
 
   esbuild@0.25.12:
     resolution: {integrity: sha512-bbPBYYrtZbkt6Os6FiTLCTFxvq4tt3JKall1vRwshA3fdVztsLAatFaZobhkBC8/BrPetoa0oksYoKXoG4ryJg==}
@@ -821,6 +854,14 @@ packages:
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
+
+  laravel-precognition@2.0.0:
+    resolution: {integrity: sha512-dmA4HGc9m+TsVNsJs9/XQBI8u6j7coilN+qKkBuhuXQzH3HypwS/c5dFQ4UqUGjBbcxIM7zdk91kM/SRZwIvWQ==}
+    peerDependencies:
+      axios: ^1.4.0
+    peerDependenciesMeta:
+      axios:
+        optional: true
 
   miniflare@4.20260616.0:
     resolution: {integrity: sha512-cEpzoNgSWjedzYmhJvttUPmL4Jk6nSzzeNNi118T5zwnmYP9fnM8UXwFU/Qa/1qoQ4SzGqtM1Q7tinHvHvIGtw==}
@@ -1215,6 +1256,12 @@ snapshots:
   '@esbuild/win32-x64@0.27.3':
     optional: true
 
+  '@hono/inertia@0.6.0(hono@4.12.26)(vite@6.4.3)':
+    dependencies:
+      hono: 4.12.26
+    optionalDependencies:
+      vite: 6.4.3
+
   '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.34.5':
@@ -1310,6 +1357,12 @@ snapshots:
 
   '@img/sharp-win32-x64@0.34.5':
     optional: true
+
+  '@inertiajs/core@3.4.0':
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.31
+      es-toolkit: 1.47.1
+      laravel-precognition: 2.0.0
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -1421,6 +1474,16 @@ snapshots:
 
   '@speed-highlight/core@1.2.17': {}
 
+  '@ts-76/inertia-hono-jsx@0.2.3(@hono/inertia@0.6.0(hono@4.12.26)(vite@6.4.3))(hono@4.12.26)':
+    dependencies:
+      '@hono/inertia': 0.6.0(hono@4.12.26)(vite@6.4.3)
+      '@inertiajs/core': 3.4.0
+      es-toolkit: 1.47.1
+      hono: 4.12.26
+      laravel-precognition: 2.0.0
+    transitivePeerDependencies:
+      - axios
+
   '@types/estree@1.0.9': {}
 
   blake3-wasm@2.1.5: {}
@@ -1434,6 +1497,8 @@ snapshots:
   detect-libc@2.1.2: {}
 
   error-stack-parser-es@1.0.5: {}
+
+  es-toolkit@1.47.1: {}
 
   esbuild@0.25.12:
     optionalDependencies:
@@ -1507,6 +1572,10 @@ snapshots:
   jsesc@3.1.0: {}
 
   kleur@4.1.5: {}
+
+  laravel-precognition@2.0.0:
+    dependencies:
+      es-toolkit: 1.47.1
 
   miniflare@4.20260616.0:
     dependencies:
