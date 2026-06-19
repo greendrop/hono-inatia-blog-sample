@@ -11,10 +11,14 @@
   "dependencies": {
     "@hono/inertia": "^0.6.0",
     "@ts-76/inertia-hono-jsx": "^0.2.3",
-    "hono": "^4.12.26"
+    "hono": "^4.12.26",
+    "preline": "^4.2.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.2.3",
+    "@tailwindcss/forms": "^0.5.11",
+    "@tailwindcss/vite": "^4.3.1",
+    "tailwindcss": "^4.3.1",
     "vite": "^6.3.5",
     "vite-ssr-components": "^0.6.1",
     "wrangler": "^4.17.0"

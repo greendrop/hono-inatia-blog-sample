@@ -1,3 +1,4 @@
-h1 {
-  font-family: Arial, Helvetica, sans-serif;
-}
+@import "tailwindcss";
+@import "../node_modules/preline/variants.css";
+@source "../node_modules/preline/dist/*.js";
+@plugin "@tailwindcss/forms";
