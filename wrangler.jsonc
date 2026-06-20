@@ -2,5 +2,13 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hono-inatia-blog-sample",
   "compatibility_date": "2025-08-03",
-  "main": "./src/index.tsx"
+  "main": "./src/index.tsx",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hono-inatia-blog-sample",
+      "database_id": "local-blog-placeholder",
+      "migrations_dir": "drizzle/migrations",
+    },
+  ],
 }
