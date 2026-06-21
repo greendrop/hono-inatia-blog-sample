@@ -11,6 +11,9 @@ importers:
       '@hono/inertia':
         specifier: ^0.6.0
         version: 0.6.0(hono@4.12.26)(vite@6.4.3(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4))
+      '@hono/zod-validator':
+        specifier: ^0.8.0
+        version: 0.8.0(hono@4.12.26)(zod@4.4.3)
       '@ts-76/inertia-hono-jsx':
         specifier: ^0.2.3
         version: 0.2.3(@hono/inertia@0.6.0(hono@4.12.26)(vite@6.4.3(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)))(hono@4.12.26)
@@ -23,6 +26,9 @@ importers:
       preline:
         specifier: ^4.2.0
         version: 4.2.0
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.2.3
@@ -774,6 +780,12 @@ packages:
     peerDependenciesMeta:
       vite:
         optional: true
+
+  '@hono/zod-validator@0.8.0':
+    resolution: {integrity: sha512-5uS4S1/LKtZQYvD4BtpPUFkOv8d1wNxHHrChm26buMiEYc1FrHWvDUaKVBwkiVtvSExHSpLGDvcnpI2Copyj9w==}
+    peerDependencies:
+      hono: '>=4.10.0'
+      zod: ^3.25.0 || ^4.0.0
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -1726,6 +1738,9 @@ packages:
   youch@4.1.0-beta.10:
     resolution: {integrity: sha512-rLfVLB4FgQneDr0dv1oddCVZmKjcJ6yX6mS4pU82Mq/Dt9a3cLZQ62pDBL4AUO+uVrCvtWz3ZFUL2HFAFJ/BXQ==}
 
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+
 snapshots:
 
   '@babel/code-frame@7.29.7':
@@ -2148,6 +2163,11 @@ snapshots:
       hono: 4.12.26
     optionalDependencies:
       vite: 6.4.3(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)
+
+  '@hono/zod-validator@0.8.0(hono@4.12.26)(zod@4.4.3)':
+    dependencies:
+      hono: 4.12.26
+      zod: 4.4.3
 
   '@img/colour@1.1.0': {}
 
@@ -2935,3 +2955,5 @@ snapshots:
       '@speed-highlight/core': 1.2.17
       cookie: 1.1.1
       youch-core: 0.3.3
+
+  zod@4.4.3: {}

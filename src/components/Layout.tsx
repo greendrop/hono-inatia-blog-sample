@@ -16,6 +16,9 @@ export default function Layout({ children }: { children: unknown }) {
           <Link href="/posts" class="text-gray-600 hover:text-gray-900">
             記事一覧
           </Link>
+          <Link href="/admin/posts" class="text-gray-600 hover:text-gray-900">
+            管理
+          </Link>
 
           {/* 動作確認用：Preline のドロップダウン */}
           <div class="hs-dropdown relative ml-auto inline-flex">
@@ -37,6 +40,12 @@ export default function Layout({ children }: { children: unknown }) {
                 class="block rounded px-3 py-2 text-sm hover:bg-gray-100"
               >
                 記事一覧
+              </Link>
+              <Link
+                href="/admin/posts"
+                class="text-gray-600 hover:text-gray-900"
+              >
+                管理
               </Link>
             </div>
           </div>

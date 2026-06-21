@@ -4,6 +4,7 @@ import { rootView } from "./root-view";
 import { createDb } from "./db";
 import { posts } from "./db/schema";
 import { desc, eq } from "drizzle-orm";
+import adminPosts from "./routes/admin/posts";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 app.use(inertia({ version: "1", rootView }));
@@ -21,6 +22,7 @@ const routes = app
     const post = await db.select().from(posts).where(eq(posts.id, id)).get();
     if (!post) return c.notFound();
     return c.render("Posts/Show", { post });
-  });
+  })
+  .route("/admin/posts", adminPosts);
 
 export default routes;

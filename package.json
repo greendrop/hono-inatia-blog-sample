@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@hono/inertia": "^0.6.0",
+    "@hono/zod-validator": "^0.8.0",
     "@ts-76/inertia-hono-jsx": "^0.2.3",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.26",
-    "preline": "^4.2.0"
+    "preline": "^4.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.2.3",
