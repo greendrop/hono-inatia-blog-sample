@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { sql, desc, eq } from "drizzle-orm";
-import { createDb } from "../../db";
+import type { Db } from "../../db";
 import { posts } from "../../db/schema";
 
 const postSchema = z.object({
@@ -23,12 +23,15 @@ const toErrors = (err: z.ZodError) => {
   return errors;
 };
 
-const adminPosts = new Hono<{ Bindings: CloudflareBindings }>();
+const adminPosts = new Hono<{
+  Bindings: CloudflareBindings;
+  Variables: { db: Db };
+}>();
 
 adminPosts
   // 管理一覧
   .get("/", async (c) => {
-    const db = createDb(c.env.DB);
+    const db = c.get("db");
     const list = await db.select().from(posts).orderBy(desc(posts.createdAt));
     return c.render("Admin/Posts/Index", { posts: list });
   })
@@ -45,14 +48,14 @@ adminPosts
     }),
     async (c) => {
       const { title, body } = c.req.valid("json"); // 'form' → 'json'
-      const db = createDb(c.env.DB);
+      const db = c.get("db");
       await db.insert(posts).values({ title, body });
       return c.redirect("/admin/posts", 303);
     },
   )
   // 編集フォーム
   .get("/:id/edit", async (c) => {
-    const db = createDb(c.env.DB);
+    const db = c.get("db");
     const id = Number(c.req.param("id"));
     const post = await db.select().from(posts).where(eq(posts.id, id)).get();
     if (!post) return c.notFound();
@@ -64,7 +67,7 @@ adminPosts
     zValidator("json", postSchema, async (result, c) => {
       if (!result.success) {
         // 失敗時、Edit は post prop を必要とするので引き直して渡す
-        const db = createDb(c.env.DB);
+        const db = c.get("db");
         const id = Number(c.req.param("id"));
         const post = await db
           .select()
@@ -79,7 +82,7 @@ adminPosts
     }),
     async (c) => {
       const { title, body } = c.req.valid("json");
-      const db = createDb(c.env.DB);
+      const db = c.get("db");
       const id = Number(c.req.param("id"));
       await db
         .update(posts)
@@ -90,7 +93,7 @@ adminPosts
   )
   // 削除
   .delete("/:id", async (c) => {
-    const db = createDb(c.env.DB);
+    const db = c.get("db");
     const id = Number(c.req.param("id"));
     await db.delete(posts).where(eq(posts.id, id));
     return c.redirect("/admin/posts", 303);
