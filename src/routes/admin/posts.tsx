@@ -4,6 +4,7 @@ import { z } from "zod";
 import { sql, desc, eq } from "drizzle-orm";
 import type { Db } from "../../db";
 import { posts } from "../../db/schema";
+import { setFlash } from "../../flash";
 
 const postSchema = z.object({
   title: z
@@ -50,6 +51,7 @@ adminPosts
       const { title, body } = c.req.valid("json"); // 'form' → 'json'
       const db = c.get("db");
       await db.insert(posts).values({ title, body });
+      setFlash(c, "投稿を作成しました");
       return c.redirect("/admin/posts", 303);
     },
   )
@@ -88,6 +90,7 @@ adminPosts
         .update(posts)
         .set({ title, body, updatedAt: sql`(current_timestamp)` })
         .where(eq(posts.id, id));
+      setFlash(c, "投稿を更新しました");
       return c.redirect("/admin/posts", 303);
     },
   )
@@ -96,6 +99,7 @@ adminPosts
     const db = c.get("db");
     const id = Number(c.req.param("id"));
     await db.delete(posts).where(eq(posts.id, id));
+    setFlash(c, "投稿を削除しました");
     return c.redirect("/admin/posts", 303);
   });
 

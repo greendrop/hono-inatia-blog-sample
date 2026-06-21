@@ -5,6 +5,7 @@ import { createDb, type Db } from "./db";
 import { posts } from "./db/schema";
 import { desc, eq } from "drizzle-orm";
 import adminPosts from "./routes/admin/posts";
+import { flash } from "./flash";
 
 type Env = {
   Bindings: CloudflareBindings;
@@ -16,6 +17,7 @@ export function createApp(dbProvider?: (c: any) => Db) {
   const app = new Hono<Env>();
 
   app.use(inertia({ version: "1", rootView }));
+  app.use(flash());
   app.use(async (c, next) => {
     c.set("db", dbProvider ? dbProvider(c) : createDb(c.env.DB));
     await next();
