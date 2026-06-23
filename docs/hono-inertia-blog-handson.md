@@ -1,7 +1,7 @@
 # Hono + Inertia(hono/jsx) で作る簡易ブログ ハンズオン
 
 Cloudflare Workers 上で **Hono + @hono/inertia + hono/jsx** を使い、簡易ブログをステップバイステップで構築する記録。
-最終的に **D1 / Drizzle / Preline UI / Vitest / フラッシュメッセージ / SSR** まで含む。すべて**ローカル完結**（Cloudflare アカウントへのデプロイはしない構成）。
+最終的に **D1 / Drizzle / Vitest / フラッシュメッセージ / SSR** まで含む。すべて**ローカル完結**（Cloudflare アカウントへのデプロイはしない構成）。
 
 - 簡易ブログ：投稿は `title` / `body` のみ（タグ・カテゴリ・コメントなし）
 - ユーザ画面：一覧・詳細
@@ -20,7 +20,7 @@ Cloudflare Workers 上で **Hono + @hono/inertia + hono/jsx** を使い、簡易
 | ページ遷移 | `@hono/inertia`（サーバ） + `@ts-76/inertia-hono-jsx`（クライアント） |
 | DB | Cloudflare D1（ローカル SQLite） |
 | ORM | Drizzle |
-| UI | Tailwind CSS v4 + Preline UI v4 |
+| UI | Tailwind CSS v4 |
 | テスト | Vitest + libsql インメモリ |
 | パッケージ管理 | pnpm |
 
@@ -44,14 +44,14 @@ src/
   ssr.tsx             # SSR描画エントリ
   client.tsx          # クライアント起動（createInertiaApp）
   flash.ts            # Cookieベースのフラッシュ
-  style.css           # Tailwind + Preline
+  style.css           # Tailwind CSS
   db/
     index.ts          # Db 型 + createDb（D1）
     schema.ts         # posts テーブル
   routes/admin/
     posts.tsx         # 管理CRUD（サブアプリ）
   components/
-    Layout.tsx        # 共通レイアウト（flashトースト + Preline再init）
+    Layout.tsx        # 共通レイアウト（flashトースト）
     PostForm.tsx      # 新規・編集共通フォーム
   pages/
     Home.tsx
@@ -220,13 +220,12 @@ export default function Home({ message }: { message: string }) {
 
 ---
 
-## Phase 3：Tailwind v4 + Preline + 共通レイアウト
+## Phase 3：Tailwind v4 + 共通レイアウト
 
-Preline は v4.2.x（Tailwind v4.2.x 対応）。Tailwind v4 は設定が v3 から変わり、`@tailwind base/components/utilities` の3行は誤り。正しくは `@import "tailwindcss";` の1行。
+Tailwind v4 は設定が v3 から変わり、`@tailwind base/components/utilities` の3行は誤り。正しくは `@import "tailwindcss";` の1行。
 
 ```bash
 pnpm add -D tailwindcss @tailwindcss/vite @tailwindcss/forms
-pnpm add preline
 ```
 
 **`vite.config.ts`** に Tailwind プラグインを追加
@@ -245,48 +244,24 @@ export default defineConfig({
 
 ```css
 @import "tailwindcss";
-@import "../node_modules/preline/variants.css";
-@source "../node_modules/preline/dist/*.js";
 @plugin "@tailwindcss/forms";
 ```
 
-> ⚠️ `@import "preline/variants.css"` は **動かない**。Preline 4.2.0 の `package.json` の `exports` に `./variants.css` が無いため。実ファイルは `node_modules/preline/variants.css`（パッケージ直下）に存在し中身は相対 import で自己完結しているので、**相対パスで直接読む**のが正解。
-
-**`src/client.tsx`** の先頭で CSS と Preline JS を読み込む
+**`src/client.tsx`** の先頭で CSS を読み込む
 
 ```tsx
 import './style.css'
-import 'preline'
 // 既存の createInertiaApp(...) はそのまま
 ```
 
-**`src/global.d.ts`**
+**`src/components/Layout.tsx`**
 
-```ts
-import type { IStaticMethods } from 'preline/dist'
-
-declare global {
-  interface Window {
-    HSStaticMethods: IStaticMethods
-  }
-}
-export {}
-```
-
-**`src/components/Layout.tsx`**（★ Inertia 遷移時の Preline 再初期化が肝）
-
-> フラッシュ対応版は Phase 8-a を参照。まずは autoInit のみ。
+> フラッシュ対応版は Phase 8-a を参照。まずはレイアウトのみ。
 
 ```tsx
-import { useEffect } from 'hono/jsx'
 import { Link } from '@ts-76/inertia-hono-jsx'
 
 export default function Layout({ children }: { children: unknown }) {
-  // Inertia遷移のたびに Layout が再マウントされ autoInit が走る
-  useEffect(() => {
-    window.HSStaticMethods?.autoInit()
-  }, [])
-
   return (
     <div class="min-h-screen bg-gray-50">
       <header class="border-b bg-white">
@@ -305,9 +280,6 @@ export default function Layout({ children }: { children: unknown }) {
 > **React からの最重要の違い**：hono/jsx は `className` ではなく **`class`**。
 
 各ページを `<Layout>` で包む。
-
-### 重要な学び：SPA遷移では Preline が再初期化されない
-Preline は JS で初期化されるコンポーネント（ドロップダウン等）を持つが、Inertia の SPA 遷移では DOM が差し替わるだけで再初期化されない。`useEffect([], ...)` の中で `window.HSStaticMethods.autoInit()` を呼ぶことで、遷移ごとに再初期化する。autoInit をコメントアウトすると「初回は動くが2ページ目以降で動かない」を再現できる。
 
 ---
 
@@ -1062,14 +1034,12 @@ export const rootView: RootView = async (page) => {
 
 | 症状 | 原因 | 解決 |
 |---|---|---|
-| `Missing "./variants.css" specifier in "preline"` | Preline 4.2 の `exports` に `variants.css` が無い | `@import "../node_modules/preline/variants.css"` と相対パスで読む |
 | `No migrations present at .../migrations` | `migrations apply` の DB 名引数が `database_name` と不一致 → デフォルトフォルダにフォールバック | コマンドの DB 名を `wrangler.jsonc` の `database_name` と一致させる |
 | `migrations_dir` が効かない | `d1_databases` オブジェクトの外に書いた | 各バインディングオブジェクト**の中**に書く |
 | migrations apply で OAuth が開く | `--local` を付け忘れた | ローカル操作には常に `--local` を付ける |
 | バリデーションで `expected string, received undefined` | `zValidator('form')` だが Inertia は JSON 送信 | `zValidator('json')` + `c.req.valid('json')` にする |
 | `@cloudflare/vitest-pool-workers` が重い | workerd ダウンロード + migrations recipe 配線 | テストは libsql インメモリ + DI（`c.get('db')`）に切り替え |
 | `better-sqlite3` がインストールできない | ネイティブビルド（node-gyp）が新しい Node でコンパイルに落ちる | プレビルド配布の `@libsql/client` を使う |
-| SPA 遷移で Preline が動かない | 遷移時に Preline が再初期化されない | Layout の `useEffect` で `window.HSStaticMethods.autoInit()` |
 | `className` が効かない | hono/jsx は `class` | `class` を使う |
 
 ---

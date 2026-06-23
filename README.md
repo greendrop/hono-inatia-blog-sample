@@ -18,7 +18,7 @@
 | DB | Cloudflare D1（ローカル SQLite） |
 | ORM | Drizzle ORM |
 | バリデーション | zod + `@hono/zod-validator` |
-| UI | Tailwind CSS v4 + Preline UI v4 |
+| UI | Tailwind CSS v4 |
 | テスト | Vitest + libsql（インメモリ） |
 | ビルド | Vite + `@cloudflare/vite-plugin` |
 | パッケージ管理 | pnpm |
@@ -48,7 +48,7 @@ src/
   ssr.tsx             # SSR 描画エントリ
   client.tsx          # クライアント起動（createInertiaApp）
   flash.ts            # Cookie ベースのフラッシュメッセージ
-  style.css           # Tailwind CSS + Preline
+  style.css           # Tailwind CSS
   db/
     index.ts          # Db 型 + createDb（D1）
     schema.ts         # posts テーブル定義

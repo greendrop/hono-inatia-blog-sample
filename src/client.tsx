@@ -1,5 +1,4 @@
 import "./style.css";
-import "preline";
 import { createInertiaApp } from "@ts-76/inertia-hono-jsx";
 import { render } from "hono/jsx/dom";
 

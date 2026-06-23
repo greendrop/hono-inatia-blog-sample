@@ -16,7 +16,6 @@
     "@ts-76/inertia-hono-jsx": "^0.2.3",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.26",
-    "preline": "^4.2.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
