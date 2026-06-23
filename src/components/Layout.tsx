@@ -6,10 +6,6 @@ export default function Layout({ children }: { children: unknown }) {
   const flash = (page.props as { flash?: string | null }).flash ?? null;
   const [show, setShow] = useState(false);
 
-  useEffect(() => {
-    window.HSStaticMethods?.autoInit();
-  }, []);
-
   // flash が来たら表示 → 3秒で消す
   useEffect(() => {
     if (!flash) return;
