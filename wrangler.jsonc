@@ -8,7 +8,7 @@
       "binding": "DB",
       "database_name": "hono-inatia-blog-sample",
       "database_id": "local-blog-placeholder",
-      "migrations_dir": "drizzle/migrations",
+      "migrations_dir": "atlas/migrations",
     },
   ],
 }

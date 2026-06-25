@@ -62,7 +62,8 @@ src/
       Index.tsx
       New.tsx
       Edit.tsx
-drizzle/migrations/   # drizzle-kit が生成
+atlas/migrations/     # Atlas が生成（タイムスタンプ命名）
+atlas.hcl             # Atlas 設定
 seeds/dev.sql
 test/
   db.ts
@@ -287,7 +288,7 @@ export default function Layout({ children }: { children: unknown }) {
 
 `wrangler d1 create` は名前に反して**リモート（Cloudflare アカウント上）に DB を作る操作**。ローカル限定なら **スキップ**してよい。バインディングを手書きし、`--local` でマイグレーションを当てるだけ。
 
-マイグレーションは「Drizzle で生成 → wrangler で適用」方式（`drizzle-kit migrate` は使わない。ローカル D1 のハッシュ付きパス指定が脆いため）。
+マイグレーションは **「Atlas で生成 → wrangler で適用」** 方式。Atlas はタイムスタンプ採番（`20260625..._name.sql`）を使うため、複数人で並行作業しても連番が衝突しない。Atlas が D1 へ直接接続することはなく、wrangler が適用を担うのでローカル完結（Cloudflare アカウント不要）を維持できる。
 
 ```bash
 pnpm add drizzle-orm
@@ -312,16 +313,48 @@ export type Post = typeof posts.$inferSelect
 export type NewPost = typeof posts.$inferInsert
 ```
 
-**`drizzle.config.ts`**
+**`drizzle.config.ts`**（`export` コマンド用。`out` は不要）
 
 ```ts
 import { defineConfig } from 'drizzle-kit'
 
 export default defineConfig({
   schema: './src/db/schema.ts',
-  out: './drizzle/migrations',
   dialect: 'sqlite',
 })
+```
+
+**Atlas のインストール**（Go バイナリ。npm 依存に含まれないため別途インストール）
+
+```bash
+# mise（推奨）
+mise use atlas
+
+# macOS（Homebrew）
+brew install ariga/tap/atlas
+
+# Linux / CI
+curl -sSf https://atlasgo.sh | sh
+```
+
+> `diff`/`apply`/`hash` 等の日常操作は無料・オフライン・アカウント不要。`migrate lint`（破壊的変更チェック）は無料の `atlas login` でロック解除できるが、本プロジェクトでは使わず SQL 目視レビューで代替する（詳細: [docs/migrations-atlas.md](./migrations-atlas.md)）。
+
+**`atlas.hcl`**（プロジェクトルートに配置）
+
+```hcl
+data "external_schema" "drizzle" {
+  program = ["pnpm", "exec", "drizzle-kit", "export"]
+}
+
+env "local" {
+  dev = "sqlite://file?mode=memory&_fk=1"
+  schema {
+    src = data.external_schema.drizzle.url
+  }
+  migration {
+    dir = "file://atlas/migrations"
+  }
+}
 ```
 
 **`wrangler.jsonc`** に D1 バインディング追加（ローカル placeholder）
@@ -334,23 +367,34 @@ export default defineConfig({
       "binding": "DB",
       "database_name": "blog",
       "database_id": "local-blog-placeholder",
-      "migrations_dir": "drizzle/migrations"
+      "migrations_dir": "atlas/migrations"
     }
   ]
 }
 ```
 
-> `migrations_dir` を Drizzle の `out` と一致させ、**`d1_databases` の各オブジェクトの中**に置くこと（配列の外やトップレベルだと無視される）。`database_id` はローカルなら任意の文字列でよい。
+> `migrations_dir` を Atlas の出力先（`atlas/migrations`）と一致させ、**`d1_databases` の各オブジェクトの中**に置くこと（配列の外やトップレベルだと無視される）。`database_id` はローカルなら任意の文字列でよい。
 
 **マイグレーション生成 → ローカル適用**
 
 ```bash
-pnpm exec drizzle-kit generate                          # drizzle/migrations/0000_*.sql 生成
+atlas migrate diff init --env local     # atlas/migrations/<ts>_init.sql + atlas.sum を生成
 pnpm exec wrangler d1 migrations apply blog --local
 ```
 
 > ⚠️ `--local` を**必ず**付ける。付けないとリモート扱いになり OAuth ログインが開く。`migrations apply` も `execute` も常に `--local` を付ける癖を。
 > ⚠️ コマンドの DB 名（`blog`）は `wrangler.jsonc` の `database_name` と**一致**させること。不一致だと wrangler は設定を見つけられずデフォルトの `migrations` フォルダにフォールバックし「No migrations present」エラーになる。
+
+**スキーマ変更時のフロー（以降）**
+
+```bash
+# 1. src/db/schema.ts を編集
+# 2. 差分 migration を生成（タイムスタンプ採番）
+atlas migrate diff <名前> --env local   # 例: atlas migrate diff add_published
+# 3. 生成 SQL を目視確認し、ローカルに適用
+pnpm exec wrangler d1 migrations apply blog --local
+# 4. schema.ts と atlas/migrations/ を両方コミット
+```
 
 **seed**：`seeds/dev.sql`
 
@@ -785,17 +829,24 @@ export default createApp()
 ```ts
 import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
-import { migrate } from 'drizzle-orm/libsql/migrator'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import * as schema from '../src/db/schema'
 import type { Db } from '../src/db'
 
+const MIGRATIONS_DIR = new URL('../atlas/migrations', import.meta.url).pathname
+
 export async function createTestDb(): Promise<Db> {
-  const client = createClient({ url: ':memory:' })                 // 新品のインメモリ
-  const db = drizzle(client, { schema })
-  await migrate(db, { migrationsFolder: './drizzle/migrations' })  // 本番と同じ migration を適用
-  return db
+  const client = createClient({ url: ':memory:' }) // 新品のインメモリ
+  // Atlas が生成した SQL を名前順（タイムスタンプ昇順）に流す
+  for (const f of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()) {
+    await client.executeMultiple(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'))
+  }
+  return drizzle(client, { schema })
 }
 ```
+
+> `drizzle/migrations` の `_journal.json` や `migrate()` に依存せず、Atlas が生成した `.sql` を `executeMultiple` で直接流す。Atlas バイナリを CI に入れずに済み、本番と同じマイグレーションを参照する点は変わらない。
 
 **`test/posts.test.ts`**
 
@@ -1037,6 +1088,7 @@ export const rootView: RootView = async (page) => {
 | `No migrations present at .../migrations` | `migrations apply` の DB 名引数が `database_name` と不一致 → デフォルトフォルダにフォールバック | コマンドの DB 名を `wrangler.jsonc` の `database_name` と一致させる |
 | `migrations_dir` が効かない | `d1_databases` オブジェクトの外に書いた | 各バインディングオブジェクト**の中**に書く |
 | migrations apply で OAuth が開く | `--local` を付け忘れた | ローカル操作には常に `--local` を付ける |
+| `atlas.sum` mismatch エラー | migration ファイルが手書き変更された | `atlas migrate hash` で再生成 |
 | バリデーションで `expected string, received undefined` | `zValidator('form')` だが Inertia は JSON 送信 | `zValidator('json')` + `c.req.valid('json')` にする |
 | `@cloudflare/vitest-pool-workers` が重い | workerd ダウンロード + migrations recipe 配線 | テストは libsql インメモリ + DI（`c.get('db')`）に切り替え |
 | `better-sqlite3` がインストールできない | ネイティブビルド（node-gyp）が新しい Node でコンパイルに落ちる | プレビルド配布の `@libsql/client` を使う |
@@ -1047,7 +1099,7 @@ export const rootView: RootView = async (page) => {
 ## 設計判断まとめ
 
 - **ローカル限定 D1**：`wrangler d1 create`（リモート操作）を避け、バインディング手書き + `--local`。公開時のみ `d1 create` → `database_id` 差し替え → `--remote`。
-- **マイグレーション**：Drizzle で生成 → wrangler で適用（`drizzle-kit migrate` のローカルパス脆さを回避）。
+- **マイグレーション**：Atlas で生成（タイムスタンプ採番・連番衝突なし・`atlas.sum` で整合性保証）→ wrangler で適用。Atlas が D1 に直接接続しないためローカル完結を維持。詳細は [docs/migrations-atlas.md](./migrations-atlas.md)。
 - **バリデーションエラー**：`@hono/inertia` に flash が無いので「同じフォームを `errors` 付きで再レンダリング」。Cookie flash を拡張すれば「303 でフォームに戻す」正攻法にもできる。
 - **DI（`c.get('db')`）**：本番 D1・テスト libsql の二刀流を1つの seam で成立させる。`Db = BaseSQLiteDatabase<'async', any, typeof schema>` が両ドライバの共通型。
 - **テスト DB**：libsql `:memory:`。ネイティブビルド不要・非同期で D1 に近い・テストごとに独立。
@@ -1055,7 +1107,7 @@ export const rootView: RootView = async (page) => {
 
 ## 発展課題（未実施）
 
-- **本番デプロイ**：`wrangler d1 create` → `database_id` 差し替え → `wrangler d1 migrations apply blog --remote` → `vite build` → `wrangler deploy`。rootView の `/src/client.tsx` をビルド済みアセット（ハッシュ付き）に解決させる配線、`<head>` への CSS link が必要。
+- **本番デプロイ**：`wrangler d1 create` → `database_id` 差し替え → `pnpm db:apply:remote` → `vite build` → `wrangler deploy`。rootView の `/src/client.tsx` をビルド済みアセット（ハッシュ付き）に解決させる配線、`<head>` への CSS link が必要。
 - **エラー flash**：Cookie flash でバリデーションエラーを redirect-back し、URL を綺麗に保つ。
 - **404 ページ**：`c.render('Errors/NotFound', {})`。
 - **per-page タイトル**：各ページで `<Head title="...">`。
