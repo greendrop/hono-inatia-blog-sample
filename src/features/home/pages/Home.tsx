@@ -1,5 +1,5 @@
 import { Link } from "@ts-76/inertia-hono-jsx";
-import Layout from "../components/Layout";
+import Layout from "@/shared/components/Layout";
 
 export default function Home({ message }: { message: string }) {
   return (

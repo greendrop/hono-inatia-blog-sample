@@ -1,6 +1,6 @@
 import { Link, router } from "@ts-76/inertia-hono-jsx";
-import Layout from "../../../components/Layout";
-import type { Post } from "../../../db/schema";
+import Layout from "@/shared/components/Layout";
+import type { Post } from "@/db/schema";
 
 export default function Index({ posts }: { posts: Post[] }) {
   const onDelete = (id: number) => {

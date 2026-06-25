@@ -38,32 +38,48 @@ Cloudflare Workers との相性が良い理由：React 版は Edge 側にも `re
 
 ```
 src/
-  index.ts            # Worker エントリ（server を再エクスポート）
-  server.tsx          # createApp ファクトリ：inertia + flash + db ミドルウェア + ルート
-  root-view.ts        # 初期HTMLシェル（SSR対応：非同期）
-  ssr.tsx             # SSR描画エントリ
-  client.tsx          # クライアント起動（createInertiaApp）
-  flash.ts            # Cookieベースのフラッシュ
-  style.css           # Tailwind CSS
+  index.tsx               # Worker エントリ（server を再エクスポート）
+  server.tsx              # createApp: ミドルウェア + feature ルータの mount
+  client.tsx              # クライアント起動（createInertiaApp）
+  style.css               # Tailwind CSS
   db/
-    index.ts          # Db 型 + createDb（D1）
-    schema.ts         # posts テーブル
-  routes/admin/
-    posts.tsx         # 管理CRUD（サブアプリ）
-  components/
-    Layout.tsx        # 共通レイアウト（flashトースト）
-    PostForm.tsx      # 新規・編集共通フォーム
-  pages/
-    Home.tsx
-    Posts/
-      Index.tsx
-      Show.tsx
-    Admin/Posts/
-      Index.tsx
-      New.tsx
-      Edit.tsx
-atlas/migrations/     # Atlas が生成（タイムスタンプ命名）
-atlas.hcl             # Atlas 設定
+    index.ts              # Db 型 + createDb（D1）
+    schema.ts             # posts テーブル定義
+  shared/
+    env.ts                # AppEnv 型（Bindings + Variables.db）
+    flash.ts              # Cookie ベースのフラッシュメッセージ
+    components/
+      Layout.tsx          # 共通レイアウト（ナビ + トースト）
+    inertia/
+      resolve.ts          # 共有ページリゾルバ（glob → レンダ名マップ）
+      ssr.tsx             # SSR 描画エントリ
+      root-view.ts        # 初期 HTML シェル（SSR 対応・非同期）
+  features/
+    home/
+      routes.tsx          # GET /
+      pages/
+        Home.tsx          # レンダ名: "home/Home"
+    posts/                # 公開（読み取りのみ）
+      routes.tsx          # GET /posts, /posts/:id
+      service.ts          # listPosts / getPost
+      repository.ts       # findAll / findById
+      pages/
+        Index.tsx         # レンダ名: "posts/Index"
+        Show.tsx          # レンダ名: "posts/Show"
+    admin/
+      posts/              # 管理（CRUD）
+        routes.tsx        # GET|POST /admin/posts, PUT|DELETE /admin/posts/:id
+        service.ts        # listPosts / getPost / createPost / updatePost / deletePost
+        repository.ts     # findAll / findById / create / update / remove
+        schema.ts         # zod postSchema + PostInput 型 + toErrors
+        components/
+          PostForm.tsx    # 新規・編集共通フォーム
+        pages/
+          Index.tsx       # レンダ名: "admin/posts/Index"
+          New.tsx         # レンダ名: "admin/posts/New"
+          Edit.tsx        # レンダ名: "admin/posts/Edit"
+atlas/migrations/         # Atlas が生成（タイムスタンプ命名）
+atlas.hcl                 # Atlas 設定
 seeds/dev.sql
 test/
   db.ts
@@ -72,6 +88,13 @@ wrangler.jsonc
 drizzle.config.ts
 vitest.config.ts
 ```
+
+### feature ベース構成のポイント
+
+- `features/<feature>/` に routes / service / repository / schema / components / pages が揃う（データ層が必要な feature のみ）
+- Inertia のページ解決は `shared/inertia/resolve.ts` の `import.meta.glob("/src/features/**/pages/**/*.tsx")` が自動変換する（`features/posts/pages/Index.tsx` → レンダ名 `"posts/Index"`）
+- `@/` パスエイリアス（`@/* → src/*`）を全体で使用
+- DB（drizzle テーブル定義）は `db/` 共有層に残し、`drizzle.config.ts` / `atlas.hcl` / `test/db.ts` の参照は変更なし
 
 ---
 

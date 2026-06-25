@@ -1,5 +1,5 @@
-import Layout from "../../../components/Layout";
-import PostForm from "../../../components/PostForm";
+import Layout from "@/shared/components/Layout";
+import PostForm from "@/features/admin/posts/components/PostForm";
 
 export default function New() {
   return (
