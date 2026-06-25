@@ -20,7 +20,7 @@
 | マイグレーション | Atlas（生成）+ wrangler（適用） |
 | バリデーション | zod + `@hono/zod-validator` |
 | UI | Tailwind CSS v4 |
-| テスト | Vitest + libsql（インメモリ） |
+| テスト | Vitest + libsql（インメモリ）+ Fishery / faker（テストデータ生成） |
 | ビルド | Vite + `@cloudflare/vite-plugin` |
 | パッケージ管理 | pnpm |
 
@@ -90,8 +90,14 @@ atlas.hcl                 # Atlas 設定（drizzle-kit export 連携）
 seeds/
   dev.sql                 # ローカル開発用シードデータ
 test/
-  db.ts                   # インメモリ libsql ヘルパー
-  posts.test.ts           # Vitest テスト
+  db.ts                   # インメモリ libsql ヘルパー（createTestDb）
+  helpers.ts              # Inertia レスポンス用ヘッダ / 型
+  factories/
+    post.ts               # Fishery ファクトリ（postFactory）
+  features/               # src/features をミラー
+    home/routes.test.ts
+    posts/routes.test.ts, repository.test.ts
+    admin/posts/routes.test.ts, repository.test.ts, schema.test.ts
 ```
 
 ---

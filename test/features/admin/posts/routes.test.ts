@@ -4,14 +4,17 @@ import { createTestDb } from "../../../db";
 import { posts } from "../../../../src/db/schema";
 import type { Db } from "../../../../src/db";
 import type { Post } from "../../../../src/db/schema";
-import { inertiaHeaders, seedPost, type InertiaPage } from "../../../helpers";
+import { inertiaHeaders, type InertiaPage } from "../../../helpers";
+import { postFactory } from "../../../factories/post";
 
 let db: Db;
 let app: ReturnType<typeof createApp>;
+let factory: ReturnType<typeof postFactory>;
 
 beforeEach(async () => {
   db = await createTestDb();
   app = createApp(() => db);
+  factory = postFactory(db);
 });
 
 describe("admin/posts ルート", () => {
@@ -22,8 +25,7 @@ describe("admin/posts ルート", () => {
     });
 
     it("props.posts に全件が含まれる", async () => {
-      await seedPost(db, { title: "投稿1" });
-      await seedPost(db, { title: "投稿2" });
+      await factory.createList(2);
 
       const res = await app.request("/admin/posts", { headers: inertiaHeaders });
       const page = (await res.json()) as InertiaPage<{ posts: Post[] }>;
@@ -86,7 +88,7 @@ describe("admin/posts ルート", () => {
 
   describe("GET /admin/posts/:id/edit", () => {
     it("存在する投稿は 200 を返し props.post が含まれる", async () => {
-      const post = await seedPost(db, { title: "編集対象" });
+      const post = await factory.create({ title: "編集対象" });
 
       const res = await app.request(`/admin/posts/${post.id}/edit`, {
         headers: inertiaHeaders,
@@ -104,7 +106,7 @@ describe("admin/posts ルート", () => {
 
   describe("PUT /admin/posts/:id", () => {
     it("正しい入力で更新され 303 リダイレクト", async () => {
-      const post = await seedPost(db, { title: "更新前" });
+      const post = await factory.create({ title: "更新前" });
 
       const res = await app.request(`/admin/posts/${post.id}`, {
         method: "PUT",
@@ -120,7 +122,7 @@ describe("admin/posts ルート", () => {
     });
 
     it("バリデーション失敗で props.errors あり、props.post が再注入され、DB は変わらない", async () => {
-      const post = await seedPost(db, { title: "変更前" });
+      const post = await factory.create({ title: "変更前" });
 
       const res = await app.request(`/admin/posts/${post.id}`, {
         method: "PUT",
@@ -142,7 +144,7 @@ describe("admin/posts ルート", () => {
 
   describe("DELETE /admin/posts/:id", () => {
     it("削除後 303 リダイレクト、DB から消える", async () => {
-      const post = await seedPost(db);
+      const post = await factory.create();
 
       const res = await app.request(`/admin/posts/${post.id}`, {
         method: "DELETE",
@@ -155,8 +157,8 @@ describe("admin/posts ルート", () => {
     });
 
     it("他の投稿は削除されない", async () => {
-      const post1 = await seedPost(db, { title: "削除対象" });
-      await seedPost(db, { title: "残す投稿" });
+      const post1 = await factory.create({ title: "削除対象" });
+      await factory.create({ title: "残す投稿" });
 
       await app.request(`/admin/posts/${post1.id}`, { method: "DELETE" });
 

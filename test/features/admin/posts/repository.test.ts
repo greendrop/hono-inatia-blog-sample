@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createTestDb } from "../../../db";
 import type { Db } from "../../../../src/db";
-import { seedPost } from "../../../helpers";
+import { postFactory } from "../../../factories/post";
 import {
   findAll,
   findById,
@@ -11,9 +11,11 @@ import {
 } from "../../../../src/features/admin/posts/repository";
 
 let db: Db;
+let factory: ReturnType<typeof postFactory>;
 
 beforeEach(async () => {
   db = await createTestDb();
+  factory = postFactory(db);
 });
 
 describe("admin/posts/repository", () => {
@@ -24,8 +26,8 @@ describe("admin/posts/repository", () => {
     });
 
     it("全件返す", async () => {
-      await seedPost(db, { title: "投稿A" });
-      await seedPost(db, { title: "投稿B" });
+      await factory.create({ title: "投稿A" });
+      await factory.create({ title: "投稿B" });
 
       const result = await findAll(db);
       expect(result).toHaveLength(2);
@@ -37,7 +39,7 @@ describe("admin/posts/repository", () => {
 
   describe("findById", () => {
     it("存在する id の投稿を返す", async () => {
-      const seeded = await seedPost(db, { title: "取得対象" });
+      const seeded = await factory.create({ title: "取得対象" });
 
       const result = await findById(db, seeded.id);
       expect(result).toBeDefined();
@@ -71,7 +73,7 @@ describe("admin/posts/repository", () => {
 
   describe("update", () => {
     it("title と body が更新される", async () => {
-      const seeded = await seedPost(db, { title: "更新前", body: "旧本文" });
+      const seeded = await factory.create({ title: "更新前", body: "旧本文" });
 
       await update(db, seeded.id, { title: "更新後", body: "新本文" });
 
@@ -81,8 +83,8 @@ describe("admin/posts/repository", () => {
     });
 
     it("他の投稿には影響しない", async () => {
-      const post1 = await seedPost(db, { title: "投稿1" });
-      const post2 = await seedPost(db, { title: "投稿2" });
+      const post1 = await factory.create({ title: "投稿1" });
+      const post2 = await factory.create({ title: "投稿2" });
 
       await update(db, post1.id, { title: "投稿1更新", body: "本文" });
 
@@ -93,7 +95,7 @@ describe("admin/posts/repository", () => {
 
   describe("remove", () => {
     it("対象投稿が削除される", async () => {
-      const seeded = await seedPost(db);
+      const seeded = await factory.create();
 
       await remove(db, seeded.id);
 
@@ -102,8 +104,8 @@ describe("admin/posts/repository", () => {
     });
 
     it("他の投稿には影響しない", async () => {
-      const post1 = await seedPost(db, { title: "削除対象" });
-      await seedPost(db, { title: "残す投稿" });
+      const post1 = await factory.create({ title: "削除対象" });
+      await factory.create({ title: "残す投稿" });
 
       await remove(db, post1.id);
 
