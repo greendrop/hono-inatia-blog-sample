@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import type { AppEnv } from "@/shared/env";
-import { setFlash } from "@/shared/flash";
+import { setFlash, setErrors } from "@/shared/flash";
 import { postSchema, toErrors } from "./schema";
 import {
   listPosts,
@@ -26,7 +26,8 @@ adminPostsRoutes
     "/",
     zValidator("json", postSchema, (result, c) => {
       if (!result.success) {
-        return c.render("admin/posts/New", { errors: toErrors(result.error) });
+        setErrors(c, toErrors(result.error), result.data as Record<string, unknown>);
+        return c.redirect("/admin/posts/new", 303);
       }
     }),
     async (c) => {
@@ -45,15 +46,11 @@ adminPostsRoutes
   // 更新
   .put(
     "/:id",
-    zValidator("json", postSchema, async (result, c) => {
+    zValidator("json", postSchema, (result, c) => {
       if (!result.success) {
-        // 失敗時、Edit は post prop を必要とするので引き直して渡す
         const id = Number(c.req.param("id"));
-        const post = await getPost(c.get("db"), id);
-        return c.render("admin/posts/Edit", {
-          post,
-          errors: toErrors(result.error),
-        });
+        setErrors(c, toErrors(result.error), result.data as Record<string, unknown>);
+        return c.redirect(`/admin/posts/${id}/edit`, 303);
       }
     }),
     async (c) => {
