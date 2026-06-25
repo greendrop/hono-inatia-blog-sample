@@ -1,4 +1,4 @@
-import { useForm } from "@ts-76/inertia-hono-jsx";
+import { useForm, usePage } from "@ts-76/inertia-hono-jsx";
 
 type Props = {
   action: string;
@@ -13,9 +13,12 @@ export default function PostForm({
   initial,
   submitLabel,
 }: Props) {
+  const page = usePage();
+  const old = (page.props as { old?: { title?: string; body?: string } }).old;
+
   const form = useForm({
-    title: initial?.title ?? "",
-    body: initial?.body ?? "",
+    title: old?.title ?? initial?.title ?? "",
+    body: old?.body ?? initial?.body ?? "",
   });
 
   const submit = (e: Event) => {

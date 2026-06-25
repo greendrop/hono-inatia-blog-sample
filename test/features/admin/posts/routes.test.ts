@@ -55,34 +55,61 @@ describe("admin/posts ルート", () => {
       expect(all[0].title).toBe("テスト投稿");
     });
 
-    it("タイトル空でバリデーションエラー、保存されない", async () => {
+    it("タイトル空でバリデーションエラー：/admin/posts/new へ redirect-back し保存されない", async () => {
       const res = await app.request("/admin/posts", {
         method: "POST",
         headers: inertiaHeaders,
         body: JSON.stringify({ title: "", body: "本文" }),
       });
-      const page = (await res.json()) as InertiaPage<{
-        errors?: Record<string, string>;
-      }>;
-      expect(page.props.errors?.title).toBeTruthy();
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe("/admin/posts/new");
+      expect(res.headers.get("set-cookie")).toContain("errors=");
 
       const all = await db.select().from(posts);
       expect(all).toHaveLength(0);
     });
 
-    it("本文が空でバリデーションエラー、保存されない", async () => {
+    it("本文が空でバリデーションエラー：/admin/posts/new へ redirect-back し保存されない", async () => {
       const res = await app.request("/admin/posts", {
         method: "POST",
         headers: inertiaHeaders,
         body: JSON.stringify({ title: "タイトル", body: "" }),
       });
-      const page = (await res.json()) as InertiaPage<{
-        errors?: Record<string, string>;
-      }>;
-      expect(page.props.errors?.body).toBeTruthy();
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe("/admin/posts/new");
+      expect(res.headers.get("set-cookie")).toContain("errors=");
 
       const all = await db.select().from(posts);
       expect(all).toHaveLength(0);
+    });
+
+    it("redirect-back 後の GET /admin/posts/new に errors と old が注入される", async () => {
+      // 1. バリデーション失敗 → 303 + Cookie
+      const postRes = await app.request("/admin/posts", {
+        method: "POST",
+        headers: inertiaHeaders,
+        body: JSON.stringify({ title: "", body: "本文の内容" }),
+      });
+      expect(postRes.status).toBe(303);
+
+      // Headers.getSetCookie() で複数の Set-Cookie を配列として取得
+      const cookieHeader = postRes.headers
+        .getSetCookie()
+        .map((s) => s.split(";")[0].trim())
+        .join("; ");
+
+      // 2. Cookie を付けてフォーム GET → errors / old が props に注入される
+      const getRes = await app.request("/admin/posts/new", {
+        headers: { ...inertiaHeaders, Cookie: cookieHeader },
+      });
+      expect(getRes.status).toBe(200);
+
+      const page = (await getRes.json()) as InertiaPage<{
+        errors?: Record<string, string>;
+        old?: Record<string, unknown>;
+      }>;
+      expect(page.props.errors?.title).toBeTruthy();
+      expect(page.props.old?.body).toBe("本文の内容");
     });
   });
 
@@ -121,7 +148,7 @@ describe("admin/posts ルート", () => {
       expect(all[0].body).toBe("更新本文");
     });
 
-    it("バリデーション失敗で props.errors あり、props.post が再注入され、DB は変わらない", async () => {
+    it("バリデーション失敗で /admin/posts/:id/edit へ redirect-back し DB は変わらない", async () => {
       const post = await factory.create({ title: "変更前" });
 
       const res = await app.request(`/admin/posts/${post.id}`, {
@@ -129,16 +156,46 @@ describe("admin/posts ルート", () => {
         headers: inertiaHeaders,
         body: JSON.stringify({ title: "", body: "本文" }),
       });
-      const page = (await res.json()) as InertiaPage<{
-        post?: Post;
-        errors?: Record<string, string>;
-      }>;
-      expect(page.props.errors?.title).toBeTruthy();
-      // Edit フォームに表示するため post が再取得されて渡される
-      expect(page.props.post?.title).toBe("変更前");
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe(`/admin/posts/${post.id}/edit`);
+      expect(res.headers.get("set-cookie")).toContain("errors=");
 
       const all = await db.select().from(posts);
       expect(all[0].title).toBe("変更前");
+    });
+
+    it("redirect-back 後の GET /admin/posts/:id/edit に errors と old が注入される", async () => {
+      const post = await factory.create({ title: "元のタイトル", body: "元の本文" });
+
+      // 1. バリデーション失敗 → 303 + Cookie
+      const putRes = await app.request(`/admin/posts/${post.id}`, {
+        method: "PUT",
+        headers: inertiaHeaders,
+        body: JSON.stringify({ title: "", body: "編集中の本文" }),
+      });
+      expect(putRes.status).toBe(303);
+
+      // Headers.getSetCookie() で複数の Set-Cookie を配列として取得
+      const cookieHeader = putRes.headers
+        .getSetCookie()
+        .map((s) => s.split(";")[0].trim())
+        .join("; ");
+
+      // 2. Cookie を付けて編集フォーム GET → errors / old が props に注入される
+      const getRes = await app.request(`/admin/posts/${post.id}/edit`, {
+        headers: { ...inertiaHeaders, Cookie: cookieHeader },
+      });
+      expect(getRes.status).toBe(200);
+
+      const page = (await getRes.json()) as InertiaPage<{
+        post?: Post;
+        errors?: Record<string, string>;
+        old?: Record<string, unknown>;
+      }>;
+      // post prop は GET /:id/edit が引き直す
+      expect(page.props.post?.title).toBe("元のタイトル");
+      expect(page.props.errors?.title).toBeTruthy();
+      expect(page.props.old?.body).toBe("編集中の本文");
     });
   });
 
