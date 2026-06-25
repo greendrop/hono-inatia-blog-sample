@@ -78,6 +78,13 @@ src/
           Index.tsx       # レンダ名: "admin/posts/Index"
           New.tsx         # レンダ名: "admin/posts/New"
           Edit.tsx        # レンダ名: "admin/posts/Edit"
+    errors/               # エラーページ（400/403/404/500 + 共通）
+      pages/
+        NotFound.tsx      # レンダ名: "errors/NotFound"
+        BadRequest.tsx    # レンダ名: "errors/BadRequest"
+        Forbidden.tsx     # レンダ名: "errors/Forbidden"
+        ServerError.tsx   # レンダ名: "errors/ServerError"
+        Error.tsx         # レンダ名: "errors/Error"（共通フォールバック）
 atlas/migrations/         # Atlas が生成（タイムスタンプ命名）
 atlas.hcl                 # Atlas 設定
 seeds/dev.sql
@@ -90,6 +97,7 @@ test/
     home/routes.test.ts
     posts/routes.test.ts, repository.test.ts
     admin/posts/routes.test.ts, repository.test.ts, schema.test.ts
+    errors/routes.test.ts
 wrangler.jsonc
 drizzle.config.ts
 vitest.config.ts
@@ -1402,6 +1410,172 @@ pnpm add -D vite-ssr-components
 
 ---
 
+## Phase 9：エラーページ
+
+`@hono/inertia` の `c.render` は内部で `c.json` / `c.html` を呼ぶが、ステータスは**引数省略時に `c.status()` で設定済みの値**を使う。つまり `c.render` を呼ぶ前に `c.status(404)` などを差し込めば正しいコードで返せる。`inertia` ミドルウェアは `app.use` で全パスに適用されるため、`notFound` / `onError` ハンドラ内でも `c.render` が使える。
+
+設計方針：**400 / 403 / 404 / 500 は専用ページ、それ以外（405 / 429 / 503 等）は `status` プロップを受け取る共通フォールバックページ**。`HTTPException` を投げれば任意のステータスが伝わり、それ以外の例外はすべて 500 として扱う。
+
+**`src/server.tsx`**（最終形：`notFound` / `onError` 追加）
+
+```ts
+import { Hono } from 'hono'
+import { HTTPException } from 'hono/http-exception'
+import { inertia } from '@hono/inertia'
+import { createDb, type Db } from './db'
+import { flash } from '@/shared/flash'
+import { rootView } from '@/shared/inertia/root-view'
+import type { AppEnv } from '@/shared/env'
+import homeRoutes from '@/features/home/routes'
+import postsRoutes from '@/features/posts/routes'
+import adminPostsRoutes from '@/features/admin/posts/routes'
+
+export function createApp(dbProvider?: (c: any) => Db) {
+  const app = new Hono<AppEnv>()
+
+  app.use(inertia({ version: '1', rootView }))
+  app.use(flash())
+  app.use(async (c, next) => {
+    c.set('db', dbProvider ? dbProvider(c) : createDb(c.env.DB))
+    await next()
+  })
+
+  app
+    .route('/', homeRoutes)
+    .route('/posts', postsRoutes)
+    .route('/admin/posts', adminPostsRoutes)
+
+  app.notFound((c) => {
+    c.status(404)
+    return c.render('errors/NotFound')
+  })
+
+  const ERROR_PAGES: Record<number, string> = {
+    400: 'errors/BadRequest',
+    403: 'errors/Forbidden',
+    404: 'errors/NotFound',
+    500: 'errors/ServerError',
+  }
+
+  app.onError((err, c) => {
+    const status = err instanceof HTTPException ? err.status : 500
+    c.status(status)
+    const page = ERROR_PAGES[status]
+    if (page) return c.render(page)
+    return c.render('errors/Error', { status }) // 405 / 429 / 503 等
+  })
+
+  return app
+}
+
+export default createApp()
+```
+
+**`src/features/errors/pages/NotFound.tsx`**（新規・404 代表例）
+
+```tsx
+import { Link } from '@ts-76/inertia-hono-jsx'
+import Layout from '@/shared/components/Layout'
+
+export default function NotFound() {
+  return (
+    <Layout>
+      <div class="text-center">
+        <p class="text-6xl font-bold text-gray-300">404</p>
+        <h1 class="mt-4 text-2xl font-bold text-gray-900">ページが見つかりません</h1>
+        <p class="mt-2 text-gray-600">
+          お探しのページは存在しないか、移動した可能性があります。
+        </p>
+        <Link href="/" class="mt-6 inline-block text-blue-600 hover:underline">
+          トップへ戻る
+        </Link>
+      </div>
+    </Layout>
+  )
+}
+```
+
+`BadRequest.tsx`（400）/ `Forbidden.tsx`（403）/ `ServerError.tsx`（500）は同じ構造で、コード番号・見出し・説明文だけ差し替えた同形。
+
+**`src/features/errors/pages/Error.tsx`**（新規・共通フォールバック）
+
+```tsx
+import { Link } from '@ts-76/inertia-hono-jsx'
+import Layout from '@/shared/components/Layout'
+
+const MESSAGES: Record<number, string> = {
+  405: '許可されていないメソッドです',
+  429: 'リクエストが多すぎます',
+  503: '現在ご利用いただけません',
+}
+
+export default function Error({ status }: { status: number }) {
+  return (
+    <Layout>
+      <div class="text-center">
+        <p class="text-6xl font-bold text-gray-300">{status}</p>
+        <h1 class="mt-4 text-2xl font-bold text-gray-900">
+          {MESSAGES[status] ?? 'エラーが発生しました'}
+        </h1>
+        <Link href="/" class="mt-6 inline-block text-blue-600 hover:underline">
+          トップへ戻る
+        </Link>
+      </div>
+    </Layout>
+  )
+}
+```
+
+**`test/features/errors/routes.test.ts`**（抜粋）
+
+```ts
+import { HTTPException } from 'hono/http-exception'
+import { createApp } from '../../../src/server'
+// ...
+
+beforeEach(async () => {
+  db = await createTestDb()
+  app = createApp(() => db)
+
+  // onError をテストするため、例外を投げるダミールートを後付け登録
+  app.get('/__boom500', () => { throw new Error('boom') })
+  app.get('/__boom400', () => { throw new HTTPException(400) })
+  app.get('/__boom503', () => { throw new HTTPException(503) })
+})
+
+it('未定義パスは errors/NotFound を描画する', async () => {
+  const res = await app.request('/this-does-not-exist', { headers: inertiaHeaders })
+  expect(res.status).toBe(404)
+  const page = (await res.json()) as InertiaPage
+  expect(page.component).toBe('errors/NotFound')
+})
+
+it('未知の例外は errors/ServerError を描画する', async () => {
+  const res = await app.request('/__boom500', { headers: inertiaHeaders })
+  expect(res.status).toBe(500)
+  const page = (await res.json()) as InertiaPage
+  expect(page.component).toBe('errors/ServerError')
+})
+
+it('HTTPException(503) は errors/Error を描画し status プロップを持つ', async () => {
+  const res = await app.request('/__boom503', { headers: inertiaHeaders })
+  expect(res.status).toBe(503)
+  const page = (await res.json()) as InertiaPage<{ status: number }>
+  expect(page.component).toBe('errors/Error')
+  expect(page.props.status).toBe(503)
+})
+```
+
+> **onError テストのポイント**：`createApp()` が返した `app` は `onError` 登録済みなので、`beforeEach` 内で `app.get('/__boomXXX', ...)` のように例外を投げるルートを後付けするだけで `onError` を経由させられる。実ルートには一切手を入れない。
+
+### 仕組み
+
+- **`notFound`**：ルートに一致しなかったリクエストが到達する。既存の `c.notFound()`（posts / admin/posts）もこのハンドラを経由して `errors/NotFound` を描画するようになる（各ルートの変更は不要）。
+- **`onError`**：ルートハンドラや他ミドルウェアで例外が上がると発火。`HTTPException` であれば `err.status` でコードを取り出し、`ERROR_PAGES` マップに載っているコードは専用ページへ、それ以外は `errors/Error` へ `status` を渡す。`HTTPException` でない例外はすべて 500。
+- `inertia` ミドルウェアはルート処理より前に `c.setRenderer` を差し込むため、`notFound` / `onError` ハンドラでも `c.render` が使える。
+
+---
+
 ## ハマりどころ集（実際に遭遇した解決）
 
 | 症状 | 原因 | 解決 |
@@ -1432,5 +1606,4 @@ pnpm add -D vite-ssr-components
 
 - **本番デプロイ**：`wrangler d1 create` → `database_id` 差し替え → `pnpm db:apply:remote` → `vite build` → `wrangler deploy`。rootView の `/src/client.tsx` をビルド済みアセット（ハッシュ付き）に解決させる配線、`<head>` への CSS link が必要。
 - **エラー flash**：Cookie flash でバリデーションエラーを redirect-back し、URL を綺麗に保つ。
-- **404 ページ**：`c.render('Errors/NotFound', {})`。
 - **per-page タイトル**：各ページで `<Head title="...">`。
