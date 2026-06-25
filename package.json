@@ -8,7 +8,11 @@
     "deploy": "$npm_execpath run build && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:diff": "atlas migrate diff --env local",
+    "db:apply:local": "wrangler d1 migrations apply hono-inatia-blog-sample --local",
+    "db:apply:remote": "wrangler d1 migrations apply hono-inatia-blog-sample --remote",
+    "db:seed:local": "wrangler d1 execute hono-inatia-blog-sample --local --file ./seeds/dev.sql"
   },
   "dependencies": {
     "@hono/inertia": "^0.6.0",

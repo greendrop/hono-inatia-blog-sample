@@ -17,6 +17,7 @@
 | ページ遷移 | `@hono/inertia`（サーバ） + `@ts-76/inertia-hono-jsx`（クライアント） |
 | DB | Cloudflare D1（ローカル SQLite） |
 | ORM | Drizzle ORM |
+| マイグレーション | Atlas（生成）+ wrangler（適用） |
 | バリデーション | zod + `@hono/zod-validator` |
 | UI | Tailwind CSS v4 |
 | テスト | Vitest + libsql（インメモリ） |
@@ -66,8 +67,10 @@ src/
       Index.tsx
       New.tsx
       Edit.tsx
-drizzle/
-  migrations/         # drizzle-kit が生成したマイグレーション
+atlas/
+  migrations/         # Atlas が生成したマイグレーション（タイムスタンプ命名）
+  migrations/atlas.sum  # 整合性ハッシュ（git 管理必須）
+atlas.hcl             # Atlas 設定（drizzle-kit export 連携）
 seeds/
   dev.sql             # ローカル開発用シードデータ
 test/
@@ -85,22 +88,42 @@ test/
 pnpm install
 ```
 
-### 2. D1 マイグレーションの適用
+### 2. Atlas のインストール
+
+マイグレーション生成に Atlas（Go バイナリ）を使います。npm 依存に含まれないため別途インストールが必要です。
+
+```bash
+# mise（推奨）
+mise use atlas
+
+# macOS（Homebrew）
+brew install ariga/tap/atlas
+
+# Linux / CI
+curl -sSf https://atlasgo.sh | sh
+```
+
+> `diff`/`apply`/`hash` 等の日常操作は**無料・オフライン・アカウント不要**。詳細は [docs/migrations-atlas.md](./docs/migrations-atlas.md) を参照。
+
+### 3. D1 マイグレーションの適用
 
 > ⚠️ ローカル操作には必ず `--local` を付けてください。付けないとリモート（Cloudflare アカウント）が対象になります。
 
 ```bash
-# スキーマを変更した場合のみ実行（初回は不要）
-pnpm exec drizzle-kit generate
+# ローカル D1 にマイグレーションを適用（初回セットアップ）
+pnpm db:apply:local
 
-# ローカル D1 にマイグレーションを適用
-pnpm exec wrangler d1 migrations apply hono-inatia-blog-sample --local
+# スキーマを変更した場合: 差分 migration を生成してから適用
+pnpm db:diff <変更内容の名前>   # 例: pnpm db:diff add_published
+pnpm db:apply:local
 ```
 
-### 3. シードデータの投入（任意）
+詳細な運用フローは [docs/migrations-atlas.md](./docs/migrations-atlas.md) を参照してください。
+
+### 4. シードデータの投入（任意）
 
 ```bash
-pnpm exec wrangler d1 execute hono-inatia-blog-sample --local --file ./seeds/dev.sql
+pnpm db:seed:local
 ```
 
 ---
@@ -115,6 +138,10 @@ pnpm exec wrangler d1 execute hono-inatia-blog-sample --local --file ./seeds/dev
 | `pnpm test` | Vitest でテストを 1 回実行 |
 | `pnpm test:watch` | Vitest を監視モードで実行 |
 | `pnpm cf-typegen` | `worker-configuration.d.ts` を再生成 |
+| `pnpm db:diff <name>` | schema.ts から差分マイグレーションを生成 |
+| `pnpm db:apply:local` | ローカル D1 にマイグレーションを適用 |
+| `pnpm db:apply:remote` | リモート D1 にマイグレーションを適用 |
+| `pnpm db:seed:local` | ローカル D1 にシードデータを投入 |
 
 ---
 
@@ -122,3 +149,8 @@ pnpm exec wrangler d1 execute hono-inatia-blog-sample --local --file ./seeds/dev
 
 ゼロからの構築手順（各フェーズの解説・つまずきポイントも含む）は  
 👉 [docs/hono-inertia-blog-handson.md](./docs/hono-inertia-blog-handson.md) を参照してください。
+
+## マイグレーション運用
+
+Atlas + wrangler によるマイグレーション運用の詳細（日常フロー・衝突対処・トラブルシュート）は  
+👉 [docs/migrations-atlas.md](./docs/migrations-atlas.md) を参照してください。
