@@ -1,13 +1,10 @@
-import "./style.css";
+import "@/style.css";
 import { createInertiaApp } from "@ts-76/inertia-hono-jsx";
 import { render } from "hono/jsx/dom";
+import { resolvePage } from "@/shared/inertia/resolve";
 
 createInertiaApp({
-  resolve: async (name) => {
-    const pages = import.meta.glob("./pages/**/*.tsx");
-    const page = await pages[`./pages/${name}.tsx`]();
-    return (page as { default: unknown }).default;
-  },
+  resolve: async (name) => resolvePage(name),
   setup({ el, App, props }) {
     render(<App {...props} />, el);
   },

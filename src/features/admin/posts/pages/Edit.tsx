@@ -1,6 +1,6 @@
-import Layout from "../../../components/Layout";
-import PostForm from "../../../components/PostForm";
-import type { Post } from "../../../db/schema";
+import Layout from "@/shared/components/Layout";
+import PostForm from "@/features/admin/posts/components/PostForm";
+import type { Post } from "@/db/schema";
 
 export default function Edit({ post }: { post: Post }) {
   return (
