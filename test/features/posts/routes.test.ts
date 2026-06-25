@@ -3,14 +3,17 @@ import { createApp } from "../../../src/server";
 import { createTestDb } from "../../db";
 import type { Db } from "../../../src/db";
 import type { Post } from "../../../src/db/schema";
-import { inertiaHeaders, seedPost, type InertiaPage } from "../../helpers";
+import { inertiaHeaders, type InertiaPage } from "../../helpers";
+import { postFactory } from "../../factories/post";
 
 let db: Db;
 let app: ReturnType<typeof createApp>;
+let factory: ReturnType<typeof postFactory>;
 
 beforeEach(async () => {
   db = await createTestDb();
   app = createApp(() => db);
+  factory = postFactory(db);
 });
 
 describe("ユーザ画面 /posts", () => {
@@ -21,8 +24,7 @@ describe("ユーザ画面 /posts", () => {
     });
 
     it("props.posts に全件が含まれる", async () => {
-      await seedPost(db, { title: "投稿A" });
-      await seedPost(db, { title: "投稿B" });
+      await factory.createList(2);
 
       const res = await app.request("/posts", { headers: inertiaHeaders });
       const page = (await res.json()) as InertiaPage<{ posts: Post[] }>;
@@ -32,7 +34,7 @@ describe("ユーザ画面 /posts", () => {
 
   describe("GET /posts/:id", () => {
     it("200 を返し、props.post に該当投稿が入る", async () => {
-      const post = await seedPost(db, { title: "詳細テスト" });
+      const post = await factory.create({ title: "詳細テスト" });
 
       const res = await app.request(`/posts/${post.id}`, {
         headers: inertiaHeaders,
