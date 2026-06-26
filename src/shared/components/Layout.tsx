@@ -1,7 +1,21 @@
 import { useEffect, useState } from "hono/jsx";
-import { Link, usePage } from "@ts-76/inertia-hono-jsx";
+import { Head, Link, usePage } from "@ts-76/inertia-hono-jsx";
 
-export default function Layout({ children }: { children: unknown }) {
+const SITE_NAME = "Blog";
+const DEFAULT_DESCRIPTION = "Hono × Inertia × hono/jsx で作るブログサンプル";
+
+export default function Layout({
+  title,
+  description,
+  children,
+}: {
+  title?: string;
+  description?: string;
+  children: unknown;
+}) {
+  const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
+  const desc = description ?? DEFAULT_DESCRIPTION;
+
   const page = usePage();
   const flash = (page.props as { flash?: string | null }).flash ?? null;
   const [show, setShow] = useState(false);
@@ -15,7 +29,11 @@ export default function Layout({ children }: { children: unknown }) {
   }, [flash]);
 
   return (
-    <div class="min-h-screen bg-gray-50">
+    <>
+      <Head title={fullTitle}>
+        <meta name="description" content={desc} />
+      </Head>
+      <div class="min-h-screen bg-gray-50">
       {/* 既存のヘッダーはそのまま */}
       <header class="border-b bg-white">
         <nav class="mx-auto flex max-w-3xl items-center gap-4 px-4 py-3">
@@ -46,5 +64,6 @@ export default function Layout({ children }: { children: unknown }) {
 
       <main class="mx-auto max-w-3xl px-4 py-8">{children}</main>
     </div>
+    </>
   );
 }

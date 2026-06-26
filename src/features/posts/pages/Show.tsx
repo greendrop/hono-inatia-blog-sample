@@ -3,8 +3,9 @@ import Layout from "@/shared/components/Layout";
 import type { Post } from "@/db/schema";
 
 export default function Show({ post }: { post: Post }) {
+  const excerpt = post.body.replace(/\s+/g, " ").slice(0, 100);
   return (
-    <Layout>
+    <Layout title={post.title} description={excerpt}>
       <article>
         <h1 class="text-3xl font-bold text-gray-900">{post.title}</h1>
         <p class="mt-2 text-sm text-gray-400">{post.createdAt}</p>

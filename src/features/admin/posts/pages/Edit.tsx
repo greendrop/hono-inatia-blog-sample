@@ -4,7 +4,7 @@ import type { Post } from "@/db/schema";
 
 export default function Edit({ post }: { post: Post }) {
   return (
-    <Layout>
+    <Layout title="投稿を編集" description="既存の記事を編集します。">
       <h1 class="text-2xl font-bold text-gray-900">投稿を編集</h1>
       <div class="mt-6">
         <PostForm

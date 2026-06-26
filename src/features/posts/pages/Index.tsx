@@ -4,7 +4,7 @@ import type { Post } from "@/db/schema";
 
 export default function Index({ posts }: { posts: Post[] }) {
   return (
-    <Layout>
+    <Layout title="記事一覧" description="投稿された記事の一覧です。">
       <h1 class="text-2xl font-bold text-gray-900">記事一覧</h1>
 
       {posts.length === 0 ? (

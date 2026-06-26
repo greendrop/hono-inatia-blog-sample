@@ -1284,7 +1284,7 @@ export const flash = (): MiddlewareHandler => async (c, next) => {
 
 `createApp` 内で `inertia()` の**後**（c.render が用意された後）に `app.use(flash())` を差し込む（Phase 7 の `createApp` に記載済み）。各 mutation のリダイレクト直前で `setFlash(c, '...')` を呼ぶ（Phase 6 の admin/posts/routes.tsx に記載済み）。
 
-**`src/shared/components/Layout.tsx`**（flash トースト対応版・最終形）
+**`src/shared/components/Layout.tsx`**（flash トースト対応版）
 
 ```tsx
 import { useEffect, useState } from 'hono/jsx'
@@ -1326,6 +1326,8 @@ export default function Layout({ children }: { children: unknown }) {
   )
 }
 ```
+
+> `title` / `description` プロップの追加と `<Head>` による per-page タイトル対応は **Phase 11** で行う。
 
 ### 仕組み
 リダイレクト前に `setFlash` で Cookie をセット → クライアントが 303 を辿って `/admin/posts` を GET → その時に flash ミドルウェアが Cookie を読んで `flash` prop に載せ、Cookie を消す。だから**一度だけ**表示される。Workers にセッションが無いので Cookie を「一回限りの受け渡し」に使うのが肝。
@@ -1410,7 +1412,7 @@ pnpm add -D vite-ssr-components
 - `/posts` の「ページのソースを表示」で `<div id="app">` 内に一覧 HTML がサーバ描画済みで入っている（CSR の頃は空）。
 - dev では CSS が `client.tsx` 経由（JS 注入）なので SSR 直後の JS 読み込み前は未スタイル（FOUC）。本番では `<head>` にビルド済み CSS を `<link>` する。
 - 初回に一瞬チラついたら `render` がハイドレートでなく再描画している可能性。機能的には動く（SSR 表示 → クライアント再描画）。
-- 各ページで `<Head title="...">`（`@ts-76/inertia-hono-jsx` がエクスポート）を使うと SSR の `head` に反映される。
+- 各ページに固有の `title` / `description` を付ける方法は **Phase 11** で扱う。`<Head>`（`@ts-76/inertia-hono-jsx`）が出力する head 要素はこの `${head.join('\n')}` スロットに収集されるため、SSR 初回はページソースに `<title>` が現れ、SPA 遷移後もクライアント側でタブタイトルが更新される。
 
 ---
 
@@ -1709,6 +1711,121 @@ it('redirect-back 後の GET /admin/posts/new に errors と old が注入され
 
 ---
 
+## Phase 11：per-page タイトル & description
+
+Phase 8-b で用意した SSR head スロット（`${head.join('\n')}`）を使い、各ページ固有の `<title>` と `<meta name="description">` を出力する。タイトル形式は `「ページ名 | Blog」`、title 未指定時は `Blog` のみ。`<Head>` はクライアント側でも動くため **SPA 遷移でもタブタイトルが自動更新**される。
+
+### Layout を拡張する
+
+`Layout` が `title?` / `description?` を受け取り、内部で `<Head>` を描画するよう変更する。サイト名サフィックスや `<meta>` 出力を一箇所に集約でき、各ページは `<Layout title="..." description="...">` と書くだけになる。
+
+**`src/shared/components/Layout.tsx`**（最終形）
+
+```tsx
+import { useEffect, useState } from 'hono/jsx'
+import { Head, Link, usePage } from '@ts-76/inertia-hono-jsx'
+
+const SITE_NAME = 'Blog'
+const DEFAULT_DESCRIPTION = 'Hono × Inertia × hono/jsx で作るブログサンプル'
+
+export default function Layout({
+  title,
+  description,
+  children,
+}: {
+  title?: string
+  description?: string
+  children: unknown
+}) {
+  const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME
+  const desc = description ?? DEFAULT_DESCRIPTION
+
+  const page = usePage()
+  const flash = (page.props as { flash?: string | null }).flash ?? null
+  const [show, setShow] = useState(false)
+
+  // flash が来たら表示 → 3秒で消す
+  useEffect(() => {
+    if (!flash) return
+    setShow(true)
+    const t = setTimeout(() => setShow(false), 3000)
+    return () => clearTimeout(t)
+  }, [flash])
+
+  return (
+    <>
+      <Head title={fullTitle}>
+        <meta name="description" content={desc} />
+      </Head>
+      <div class="min-h-screen bg-gray-50">
+        <header class="border-b bg-white">
+          <nav class="mx-auto flex max-w-3xl items-center gap-4 px-4 py-3">
+            <Link href="/" class="font-bold text-gray-900">Blog</Link>
+            <Link href="/posts" class="text-gray-600 hover:text-gray-900">記事一覧</Link>
+            <Link href="/admin/posts" class="text-gray-600 hover:text-gray-900">管理</Link>
+          </nav>
+        </header>
+
+        {/* トースト */}
+        {show && flash && (
+          <div class="fixed right-4 top-4 z-50 flex items-center gap-3 rounded-lg bg-green-600 px-4 py-3 text-sm text-white shadow-lg">
+            <span>{flash}</span>
+            <button onClick={() => setShow(false)} class="text-white/80 hover:text-white">×</button>
+          </div>
+        )}
+
+        <main class="mx-auto max-w-3xl px-4 py-8">{children}</main>
+      </div>
+    </>
+  )
+}
+```
+
+- `Head` を `@ts-76/inertia-hono-jsx` から追加 import する。
+- `SITE_NAME` / `DEFAULT_DESCRIPTION` を定数化し、description 未指定時にデフォルト文言を使う。
+- 戻り値をフラグメント `<>...</>` で包み、先頭に `<Head>` を配置する。
+
+### ページ側の使い方
+
+**静的タイトル**（`src/features/posts/pages/Index.tsx`）:
+```tsx
+<Layout title="記事一覧" description="投稿された記事の一覧です。">
+```
+
+**動的タイトル**（`src/features/posts/pages/Show.tsx`）— 記事本文の冒頭を description に使う:
+```tsx
+export default function Show({ post }: { post: Post }) {
+  const excerpt = post.body.replace(/\s+/g, ' ').slice(0, 100)
+  return (
+    <Layout title={post.title} description={excerpt}>
+      ...
+    </Layout>
+  )
+}
+```
+
+**ステータス依存タイトル**（`src/features/errors/pages/Error.tsx`）— 共通エラーページの例:
+```tsx
+export default function Error({ status }: { status: number }) {
+  const message = MESSAGES[status] ?? 'エラーが発生しました'
+  return (
+    <Layout title={`${status} ${message}`} description={message}>
+      ...
+    </Layout>
+  )
+}
+```
+
+`home/Home.tsx` のように title を省略すると `fullTitle` が `Blog` のみになる。
+
+### 確認
+
+- 各ページのタブタイトルが `ページ名 | Blog` になること（`/posts` → `記事一覧 | Blog`、`/posts/:id` → `{記事タイトル} | Blog` など）。
+- ページのソースを表示し、`<head>` 内に `<title>記事一覧 | Blog</title>` と `<meta name="description" content="...">` がサーバ描画済みで出力されていること（SSR の確認）。
+- `<Link>` クリックによる SPA 遷移でタブタイトルが切り替わること（クライアント側 `Head` の確認）。
+
+---
+
 ## ハマりどころ集（実際に遭遇した解決）
 
 | 症状 | 原因 | 解決 |
@@ -1734,8 +1851,8 @@ it('redirect-back 後の GET /admin/posts/new に errors と old が注入され
 - **テスト DB**：libsql `:memory:`。ネイティブビルド不要・非同期で D1 に近い・テストごとに独立。
 - **テストデータ**：Fishery + @faker-js/faker で FactoryBot 相当を実現。`postFactory(db)` が sequence / 型安全な overrides / `.returning()` を提供。`beforeEach` でファクトリを生成し直すため sequence はテストごとに 1 から始まる（決定的）。
 - **SSR**：`createInertiaApp` の SSR モード + 非同期 rootView で Worker 内 in-process 実行（サイドカー不要）。
+- **per-page タイトル**：`Layout` に `title?`/`description?` を集約し内部で `<Head>` を描画。SSR/CSR 両対応（SSR では head スロット経由で `<title>` がページソースに出力され、SPA 遷移ではクライアント側 `<Head>` がタブタイトルを更新する）。
 
 ## 発展課題（未実施）
 
 - **本番デプロイ**：`wrangler d1 create` → `database_id` 差し替え → `pnpm db:apply:remote` → `vite build` → `wrangler deploy`。rootView の `/src/client.tsx` をビルド済みアセット（ハッシュ付き）に解決させる配線、`<head>` への CSS link が必要。
-- **per-page タイトル**：各ページで `<Head title="...">`。

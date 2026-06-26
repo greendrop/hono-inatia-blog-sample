@@ -8,7 +8,7 @@ export default function Index({ posts }: { posts: Post[] }) {
       router.delete(`/admin/posts/${id}`);
   };
   return (
-    <Layout>
+    <Layout title="投稿管理" description="投稿の管理（一覧・編集・削除）ができます。">
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900">投稿管理</h1>
         <Link

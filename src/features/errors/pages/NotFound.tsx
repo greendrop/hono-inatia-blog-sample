@@ -3,7 +3,7 @@ import Layout from "@/shared/components/Layout";
 
 export default function NotFound() {
   return (
-    <Layout>
+    <Layout title="404 ページが見つかりません" description="お探しのページは存在しないか、移動した可能性があります。">
       <div class="text-center">
         <p class="text-6xl font-bold text-gray-300">404</p>
         <h1 class="mt-4 text-2xl font-bold text-gray-900">ページが見つかりません</h1>
