@@ -3,7 +3,7 @@ import Layout from "@/shared/components/Layout";
 
 export default function BadRequest() {
   return (
-    <Layout>
+    <Layout title="400 不正なリクエスト" description="リクエストの内容が正しくありません。">
       <div class="text-center">
         <p class="text-6xl font-bold text-gray-300">400</p>
         <h1 class="mt-4 text-2xl font-bold text-gray-900">不正なリクエストです</h1>

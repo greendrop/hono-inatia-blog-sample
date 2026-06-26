@@ -8,12 +8,13 @@ const MESSAGES: Record<number, string> = {
 };
 
 export default function Error({ status }: { status: number }) {
+  const message = MESSAGES[status] ?? "エラーが発生しました";
   return (
-    <Layout>
+    <Layout title={`${status} ${message}`} description={message}>
       <div class="text-center">
         <p class="text-6xl font-bold text-gray-300">{status}</p>
         <h1 class="mt-4 text-2xl font-bold text-gray-900">
-          {MESSAGES[status] ?? "エラーが発生しました"}
+          {message}
         </h1>
         <Link href="/" class="mt-6 inline-block text-blue-600 hover:underline">
           トップへ戻る

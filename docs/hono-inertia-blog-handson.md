@@ -1410,7 +1410,7 @@ pnpm add -D vite-ssr-components
 - `/posts` の「ページのソースを表示」で `<div id="app">` 内に一覧 HTML がサーバ描画済みで入っている（CSR の頃は空）。
 - dev では CSS が `client.tsx` 経由（JS 注入）なので SSR 直後の JS 読み込み前は未スタイル（FOUC）。本番では `<head>` にビルド済み CSS を `<link>` する。
 - 初回に一瞬チラついたら `render` がハイドレートでなく再描画している可能性。機能的には動く（SSR 表示 → クライアント再描画）。
-- 各ページで `<Head title="...">`（`@ts-76/inertia-hono-jsx` がエクスポート）を使うと SSR の `head` に反映される。
+- `Layout` が `title?` / `description?` プロップを受け取り、内部で `<Head title="..."><meta name="description" .../></Head>` を描画する（`@ts-76/inertia-hono-jsx` の `Head` を使用）。SSR 時は `createInertiaApp` の `head` 配列として収集され `root-view.ts` の `${head.join("\n")}` スロットに出力される。SPA 遷移時もクライアント側でタブタイトルが自動的に更新される。
 
 ---
 
@@ -1738,4 +1738,3 @@ it('redirect-back 後の GET /admin/posts/new に errors と old が注入され
 ## 発展課題（未実施）
 
 - **本番デプロイ**：`wrangler d1 create` → `database_id` 差し替え → `pnpm db:apply:remote` → `vite build` → `wrangler deploy`。rootView の `/src/client.tsx` をビルド済みアセット（ハッシュ付き）に解決させる配線、`<head>` への CSS link が必要。
-- **per-page タイトル**：各ページで `<Head title="...">`。

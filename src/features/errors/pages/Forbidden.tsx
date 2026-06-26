@@ -3,7 +3,7 @@ import Layout from "@/shared/components/Layout";
 
 export default function Forbidden() {
   return (
-    <Layout>
+    <Layout title="403 アクセス不可" description="このページへのアクセス権限がありません。">
       <div class="text-center">
         <p class="text-6xl font-bold text-gray-300">403</p>
         <h1 class="mt-4 text-2xl font-bold text-gray-900">アクセスが許可されていません</h1>

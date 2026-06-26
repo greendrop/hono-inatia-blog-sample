@@ -3,7 +3,7 @@ import Layout from "@/shared/components/Layout";
 
 export default function ServerError() {
   return (
-    <Layout>
+    <Layout title="500 サーバーエラー" description="しばらく時間をおいてから再度お試しください。">
       <div class="text-center">
         <p class="text-6xl font-bold text-gray-300">500</p>
         <h1 class="mt-4 text-2xl font-bold text-gray-900">サーバーエラーが発生しました</h1>
