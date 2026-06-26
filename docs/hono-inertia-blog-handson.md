@@ -114,23 +114,26 @@ vitest.config.ts
 
 ## Phase 1：土台（Hono + Vite + Cloudflare Workers）
 
-Inertia はクライアントビルドのために Vite が必須。`@cloudflare/vite-plugin` は Worker をローカルでも workerd 上で動かし、本番挙動に近づけてくれる。Vite を最初から噛ませる。
+`cloudflare-workers+vite` テンプレートは `@cloudflare/vite-plugin` / `vite-ssr-components` / `wrangler` を同梱しているので、追加インストール不要。Worker をローカルでも workerd 上で動かし本番挙動に近づける Vite 構成が最初から揃う。
 
 ```bash
-pnpm create hono@latest hono-inatia-blog-sample   # テンプレートは cloudflare-workers を選択
+pnpm create hono@latest hono-inatia-blog-sample   # テンプレートは cloudflare-workers+vite を選択
 cd hono-inatia-blog-sample
-pnpm add -D vite @cloudflare/vite-plugin wrangler
+pnpm install
 ```
 
-**`vite.config.ts`**
+**`vite.config.ts`**（`@/` エイリアスを追加）
+
+テンプレート生成版に `cloudflare()` と `ssrPlugin()` が既に含まれている。`@/` エイリアスを足す：
 
 ```ts
 import { cloudflare } from '@cloudflare/vite-plugin'
 import { defineConfig } from 'vite'
+import ssrPlugin from 'vite-ssr-components/plugin'
 import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
-  plugins: [cloudflare()],
+  plugins: [cloudflare(), ssrPlugin()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -139,9 +142,11 @@ export default defineConfig({
 })
 ```
 
-> `@/` エイリアスを最初から仕込んでおく（全ての `src/` 配下ファイルで使用）。
+> Phase 3 で `tailwindcss()` を追加。`ssrPlugin()` は Phase 8-b で本格稼働するが最初から含めておく。
 
-**`tsconfig.json`**
+**`tsconfig.json`**（`baseUrl` / `paths` を追加）
+
+テンプレートは `jsx: react-jsx` / `jsxImportSource: hono/jsx` / `types: ["vite/client"]` を持つ `tsconfig.json` を生成する。`@/` パスエイリアスのため `baseUrl` と `paths` だけ足す：
 
 ```jsonc
 {
@@ -165,16 +170,11 @@ export default defineConfig({
 
 **`wrangler.jsonc`**
 
-```jsonc
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "hono-inatia-blog-sample",
-  "compatibility_date": "2025-08-03",
-  "main": "./src/index.tsx"
-}
-```
+テンプレート生成済み。`"name"` がプロジェクト名（`hono-inatia-blog-sample`）になっていることを確認するだけでよい。D1 バインディングは Phase 4 で追加する。
 
-**`src/index.tsx`**
+**`src/index.tsx`**（テンプレートの雛形を最小構成に置き換え）
+
+テンプレートは `src/index.tsx`（renderer 利用版）と `src/renderer.tsx` を生成する。本ハンズオンでは独自の Inertia `rootView` を使うので `src/renderer.tsx` は削除してよい。`src/index.tsx` を次の最小構成に置き換える：
 
 ```ts
 import { Hono } from 'hono'
@@ -1380,7 +1380,7 @@ export const rootView: RootView = async (page) => {
 }
 ```
 
-SSR には `vite-ssr-components` プラグインが必要。**`vite.config.ts`**（最終形）
+`vite-ssr-components` は `cloudflare-workers+vite` テンプレートに同梱済み。追加インストール不要。**`vite.config.ts`**（最終形）
 
 ```ts
 import { cloudflare } from '@cloudflare/vite-plugin'
@@ -1397,10 +1397,6 @@ export default defineConfig({
     },
   },
 })
-```
-
-```bash
-pnpm add -D vite-ssr-components
 ```
 
 ### 動作の流れ
